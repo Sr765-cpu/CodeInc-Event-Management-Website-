@@ -321,11 +321,11 @@
       const [userName, setUserName] = useState(null);
 
       const activities = [
-        { type: '', title: 'Community Cleanup Drive created', time: '2 mins ago' },
-        { type: '', title: 'New registration: Maya Sharma', time: '6 mins ago' },
-        { type: '', title: 'Vendor confirmed AV setup', time: '14 mins ago' },
-        { type: '', title: 'Reached 100 attendees milestone', time: '1 hour ago' },
-        { type: '', title: 'Reminder sent to 50 participants', time: '2 hours ago' }
+        { type: 'Event', title: 'Community Green Drive created', time: '2 mins ago' },
+        { type: 'RSVP', title: 'New registration: Maya Sharma (VIP)', time: '6 mins ago' },
+        { type: 'Vendor', title: 'Vendor confirmed AV & Stage setup', time: '14 mins ago' },
+        { type: 'Milestone', title: 'Reached 100+ attendees milestone', time: '1 hour ago' },
+        { type: 'Alert', title: 'Broadcast reminder sent to participants', time: '2 hours ago' }
       ];
 
       const handleQuickAction = (action) => {
@@ -372,8 +372,12 @@
             const user = window.Clerk.user;
 
             if (!user) {
-              // User is not signed in; you could redirect back to login if desired
-              // window.location.href = 'login.html';
+              if (typeof AuthService !== 'undefined') {
+                const localAuth = AuthService.getAuth();
+                if (localAuth && localAuth.user) {
+                  setUserName(localAuth.user.name || localAuth.user.email);
+                }
+              }
               return;
             }
 
@@ -599,7 +603,7 @@
               <KpiCard
                 icon="💰"
                 label="Total Revenue"
-                value={`₹${(stats.totalRevenue / 1000).toFixed(0)}K`}
+                value={stats.totalRevenue >= 1000 ? `₹${(stats.totalRevenue / 1000).toFixed(1)}K` : `₹${stats.totalRevenue}`}
                 subtitle={
                   stats.chatMessagesToday
                     ? `This month • ${stats.chatMessagesToday} chat msgs today`

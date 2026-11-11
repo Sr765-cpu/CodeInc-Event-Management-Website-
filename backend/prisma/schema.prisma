@@ -21,7 +21,7 @@ model User {
   isActive     Boolean   @default(true)
   lastLogin    DateTime?
   createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  updatedAt    DateTime? @updatedAt
   avatarUrl    String?
   bio          String?
   sessions     Session[]
@@ -60,7 +60,7 @@ model Event {
   rsvps     RSVP[]
   volunteers Volunteer[]
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime? @updatedAt
 
   @@index([city])
   @@index([category])
@@ -101,7 +101,7 @@ model Volunteer {
   availableDates String
   status        String   @default("Available")
   createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  updatedAt     DateTime? @updatedAt
 
   @@index([eventId])
   @@index([status])
@@ -121,7 +121,7 @@ model ResourceBooking {
   contactPhone  String?
   specialReq    String?
   createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  updatedAt     DateTime? @updatedAt
 }
 
 model TicketConfig {
@@ -132,7 +132,7 @@ model TicketConfig {
   releaseDate String?
   notes       String?
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  updatedAt   DateTime? @updatedAt
 }
 
 model Template {
@@ -149,7 +149,7 @@ model Template {
   comments    TemplateComment[]
   versions    TemplateVersion[]
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  updatedAt   DateTime? @updatedAt
   deletedAt   DateTime?
 
   @@index([category])
@@ -185,7 +185,7 @@ model GalleryItem {
   description String
   author      String?
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  updatedAt   DateTime? @updatedAt
 }
 
 model ChatMessage {

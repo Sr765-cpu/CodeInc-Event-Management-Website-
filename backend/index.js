@@ -378,7 +378,7 @@ app.post('/api/templates', async (req, res) => {
       }
     });
     res.status(201).json({ template: created });
-  }catch(e){ console.error(e); res.status(500).json({ message:'Server error' }); }
+  }catch(e){ console.error('Create template error:', e); res.status(500).json({ message: e.message || 'Server error' }); }
 });
 
 // Update template (append previous version into versions)
@@ -786,20 +786,6 @@ app.delete('/api/users/me/rsvps/:rsvpId', authenticate, async (req, res) => {
   }
 });
 
-// Only listen when running locally (not on Vercel serverless)
-if (!process.env.VERCEL) {
-  const server = http.createServer(app);
-
-  // Initialize Socket.IO for real-time chat
-  initSocket(server);
-
-  server.listen(PORT, () => {
-    console.log(`API running on http://localhost:${PORT}`);
-  });
-}
-
-export default app;
-
 // ===== Dashboard metrics endpoints =====
 
 // Aggregate KPIs from real MongoDB data
@@ -858,21 +844,23 @@ app.get('/api/dashboard/kpis', async (req, res) => {
   }
 });
 
-// Keep simple mock endpoints for activities/alerts/performance charts for now
+// Mock endpoints for activities/alerts/performance charts
 const __dashMock = {
   activities: [
-    { type: 'Event', title: 'Cleanup Drive created', time: '2m ago' },
-    { type: 'Reg', title: 'New registration: Maya', time: '6m ago' },
-    { type: 'Msg', title: 'Vendor confirmed AV setup', time: '14m ago' }
+    { type: 'Event', title: 'Community Cleanup Drive created', time: '2m ago' },
+    { type: 'Reg', title: 'New registration: Maya Sharma', time: '6m ago' },
+    { type: 'Msg', title: 'Vendor confirmed AV setup', time: '14m ago' },
+    { type: 'Milestone', title: 'Reached 100 attendees milestone', time: '1h ago' }
   ],
   alerts: [
-    { level: 'warning', msg: 'Payment gateway latency increased' },
-    { level: 'info', msg: '3 new registrations' }
+    { level: 'info', msg: 'System healthy • MongoDB connected' },
+    { level: 'info', msg: '3 new registrations today' }
   ],
   performance: { series: [10, 12, 11, 13, 15, 14, 18] },
   registrations: [
-    { id: 1, eventId: 1, name: 'Maya' },
-    { id: 2, eventId: 1, name: 'Rahul' }
+    { id: 1, eventId: 1, name: 'Maya Sharma' },
+    { id: 2, eventId: 1, name: 'Rahul Verma' },
+    { id: 3, eventId: 2, name: 'Priya Patel' }
   ],
 };
 
@@ -888,3 +876,17 @@ app.get('/api/analytics/performance', (req, res) => {
 app.get('/api/registrations', (req, res) => {
   res.json({ items: __dashMock.registrations });
 });
+
+// Only listen when running locally (not on Vercel serverless)
+if (!process.env.VERCEL) {
+  const server = http.createServer(app);
+
+  // Initialize Socket.IO for real-time chat
+  initSocket(server);
+
+  server.listen(PORT, () => {
+    console.log(`API running on http://localhost:${PORT}`);
+  });
+}
+
+export default app;
