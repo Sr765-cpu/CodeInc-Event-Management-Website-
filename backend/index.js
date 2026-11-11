@@ -884,6 +884,18 @@ if (!process.env.VERCEL) {
   // Initialize Socket.IO for real-time chat
   initSocket(server);
 
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`\n⚠️ Port ${PORT} is already in use by another running process.`);
+      console.error(`To free port ${PORT}, run:`);
+      console.error(`  lsof -ti :${PORT} | xargs kill -9\n`);
+      process.exit(1);
+    } else {
+      console.error('Server error:', err);
+      process.exit(1);
+    }
+  });
+
   server.listen(PORT, () => {
     console.log(`API running on http://localhost:${PORT}`);
   });
