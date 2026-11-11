@@ -24,13 +24,19 @@ const PORT = process.env.PORT || 4000;
 const prisma = new PrismaClient();
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({
   origin: process.env.CORS_ORIGIN || '*',
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Static frontend files
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const frontendDir = path.join(__dirname, '../frontend');
+app.use(express.static(frontendDir));
 
 // Rate limiting
 const limiter = rateLimit({
@@ -69,8 +75,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// Root route
-app.get('/', (req, res) => {
+// API Root route
+app.get('/api', (req, res) => {
   res.json({ 
     message: 'Event Management API Server',
     status: 'running',
@@ -92,9 +98,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
 
-// ===== Events CRUD (file-based storage for now) =====
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// ===== Events CRUD =====
 const eventsFile = path.join(__dirname, 'data', 'events.json');
 const templatesFile = path.join(__dirname, 'data', 'templates.json');
 
