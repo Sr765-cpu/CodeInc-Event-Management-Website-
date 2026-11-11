@@ -120,8 +120,13 @@ if(navToggle&&navLinks){
     const grid = qs(`.events-panel[data-panel="${panelName}"] .events-grid`);
     if(!grid) return;
     const dateAttr = (ev.start||'').slice(0,10);
-    const startTxt = new Date(ev.start).toLocaleString([], { dateStyle:'medium', timeStyle:'short' });
-    const endTxt = new Date(ev.end).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+    const startDate = ev.start ? new Date(ev.start) : null;
+    const endDate = ev.end ? new Date(ev.end) : null;
+    const startTxt = (startDate && !isNaN(startDate)) ? startDate.toLocaleString([], { dateStyle:'medium', timeStyle:'short' }) : 'Date TBA';
+    const endTxt = (endDate && !isNaN(endDate)) ? endDate.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) : '';
+    const dateDisplay = endTxt ? `${startTxt} – ${endTxt}` : startTxt;
+    const category = ev.category || 'General';
+    const categoryDisplay = category.charAt(0).toUpperCase() + category.slice(1);
     const liveBadge = ev.ongoing && panelName==='ongoing' ? '<span class="live">Live Now</span>' : '';
     const joinOrRegister = panelName==='ongoing' ? 'Join' : (panelName==='past' ? 'Gallery' : 'Register');
     const joinHref = panelName==='past'
@@ -129,25 +134,25 @@ if(navToggle&&navLinks){
       : `participant-registration.html?eventId=${encodeURIComponent(ev.id||'')}`;
     const banner = ev.banner || 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1200&auto=format&fit=crop';
     const html = `
-      <article class="event-card ${panelName==='past'?'past':''} ${ev.ongoing?'live':''} reveal" data-id="${ev.id||''}" data-category="${ev.category}" data-date="${dateAttr}" data-location="${ev.city}">
-        <img src="${banner}" alt="${ev.title}">
+      <article class="event-card ${panelName==='past'?'past':''} ${ev.ongoing?'live':''} reveal" data-id="${ev.id||''}" data-category="${category.toLowerCase()}" data-date="${dateAttr}" data-location="${ev.city||''}">
+        <img src="${banner}" alt="${ev.title||'Event'}">
         <div class="event-body">
           <div class="event-head">
-            <h3>${ev.title}</h3>
-            <span class="chip">${ev.category.charAt(0).toUpperCase()+ev.category.slice(1)}</span>
+            <h3>${ev.title||'Untitled Event'}</h3>
+            <span class="chip">${categoryDisplay}</span>
             ${liveBadge}
           </div>
           <ul class="meta">
-            <li>📅 ${startTxt} – ${endTxt}</li>
-            <li>📍 <a target="_blank" href="https://maps.google.com/?q=${encodeURIComponent(ev.city)}">${ev.city}</a></li>
+            <li>📅 ${dateDisplay}</li>
+            <li>📍 <a target="_blank" href="https://maps.google.com/?q=${encodeURIComponent(ev.city||'')}">${ev.city||'TBA'}</a></li>
           </ul>
-          <p class="desc">${ev.desc}</p>
+          <p class="desc">${ev.desc||''}</p>
           <div class="actions">
             <a class="btn btn-secondary" href="${joinHref}">${joinOrRegister}</a>
             ${panelName!=='past' ? '<a class="btn btn-ghost" href="volunteers.html#login">Volunteer</a>' : ''}
-            <button class="btn btn-ghost share-btn" data-title="${ev.title}" data-url="events.html">Share</button>
+            <button class="btn btn-ghost share-btn" data-title="${ev.title||'Event'}" data-url="events.html">Share</button>
             ${panelName!=='past' && panelName!=='upcoming' ? `<button class="btn btn-ghost rsvp-btn">RSVP</button>` : ''}
-            ${panelName!=='past' && panelName!=='upcoming' ? `<button class="btn btn-ghost calendar-btn" data-title="${ev.title}" data-start="${(ev.start||'').replace(/[-:]/g,'').replace('.000','').replace('Z','')}" data-end="${(ev.end||'').replace(/[-:]/g,'').replace('.000','').replace('Z','')}" data-location="${ev.city}">Add to Calendar</button>` : ''}
+            ${panelName!=='past' && panelName!=='upcoming' ? `<button class="btn btn-ghost calendar-btn" data-title="${ev.title||'Event'}" data-start="${(ev.start||'').replace(/[-:]/g,'').replace('.000','').replace('Z','')}" data-end="${(ev.end||'').replace(/[-:]/g,'').replace('.000','').replace('Z','')}" data-location="${ev.city||''}">Add to Calendar</button>` : ''}
           </div>
         </div>
       </article>`;
@@ -196,7 +201,8 @@ if(navToggle&&navLinks){
     const to= toSel?.value ? new Date(toSel.value) : null;
     const loc=(locInp?.value||'').toLowerCase();
     const radiusKm = (radiusSel && radiusSel.value!=='any') ? Number(radiusSel.value) : null;
-    eventCards.forEach(card=>{
+    const currentCards = qsa('.event-card');
+    currentCards.forEach(card=>{
       const c=(card.dataset.category||'').toLowerCase();
       const d=new Date(card.dataset.date||'2100-01-01');
       const l=(card.dataset.location||'').toLowerCase();

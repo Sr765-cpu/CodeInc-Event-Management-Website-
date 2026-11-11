@@ -125,7 +125,7 @@ export const volunteerValidation = [
   body('phone')
     .trim()
     .notEmpty().withMessage('Phone is required')
-    .matches(/^[0-9]{10,15}$/).withMessage('Invalid phone number'),
+    .matches(/^[\+]?[\d\s\-()]{7,20}$/).withMessage('Invalid phone number'),
   
   body('speciality')
     .trim()

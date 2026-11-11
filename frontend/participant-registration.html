@@ -404,9 +404,13 @@
           try {
             const name = `${firstName} ${lastName}`.trim() || firstName || lastName || email;
             const payload = { name, email, ticketType, preferences };
+            const headers = { 'Content-Type': 'application/json' };
+            const token = localStorage.getItem('token');
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
             const res = await fetch(`${API_BASE}/events/${eventId}/rsvp`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers,
               body: JSON.stringify(payload),
             });
             const data = await res.json();

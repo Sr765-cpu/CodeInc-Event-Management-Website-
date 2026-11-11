@@ -15,13 +15,15 @@ model User {
   id           String    @id @default(auto()) @map("_id") @db.ObjectId
   name         String
   email        String
-  address      String
-  role         String    // "user" or "participant"
+  address      String?
+  role         String    // "user" or "participant" or "admin"
   passwordHash String
   isActive     Boolean   @default(true)
   lastLogin    DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+  avatarUrl    String?
+  bio          String?
   sessions     Session[]
   rsvps        RSVP[]
   messages     ChatMessage[]
@@ -59,6 +61,10 @@ model Event {
   volunteers Volunteer[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([city])
+  @@index([category])
+  @@index([start])
 }
 
 model RSVP {
@@ -89,14 +95,16 @@ model Volunteer {
   event         Event    @relation(fields: [eventId], references: [id])
   name          String
   email         String
-  message       String
-  speciality    String
-  phone         String
+  message       String?
+  speciality    String?
+  phone         String?
   availableDates String
   status        String   @default("Available")
   createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@index([eventId])
+  @@index([status])
 }
 
 model ResourceBooking {
@@ -113,6 +121,7 @@ model ResourceBooking {
   contactPhone  String?
   specialReq    String?
   createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model TicketConfig {
@@ -123,6 +132,7 @@ model TicketConfig {
   releaseDate String?
   notes       String?
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Template {
@@ -141,6 +151,10 @@ model Template {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   deletedAt   DateTime?
+
+  @@index([category])
+  @@index([organizer])
+  @@index([deletedAt])
 }
 
 model TemplateComment {
@@ -171,6 +185,7 @@ model GalleryItem {
   description String
   author      String?
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model ChatMessage {

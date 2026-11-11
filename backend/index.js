@@ -9,12 +9,13 @@ import { readFile, writeFile } from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
+import bcrypt from 'bcrypt';
 
 // Import routes and middleware
 import authRoutes from './routes/auth.js';
 import chatRoutes from './routes/chat.js';
 import { initSocket } from './socket.js';
-import { authenticate, optionalAuth, authorize } from './middleware/auth.js';
+import { authenticate, optionalAuth, authorize, generateToken, generateRefreshToken } from './middleware/auth.js';
 import { eventValidation, rsvpValidation, volunteerValidation, validate } from './utils/validation.js';
 
 dotenv.config();
@@ -66,6 +67,20 @@ app.use('/api/auth/register', authLimiter);
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
+});
+
+// Root route
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Event Management API Server',
+    status: 'running',
+    endpoints: {
+      health: '/api/health',
+      events: '/api/events',
+      templates: '/api/templates',
+      volunteers: '/api/volunteers'
+    }
+  });
 });
 
 // Health
@@ -438,15 +453,6 @@ app.post('/api/templates/:id/clone', async (req, res) => {
   }catch(e){ console.error(e); res.status(500).json({ message:'Server error' }); }
 });
 
-// Delete event
-app.delete('/api/events/:id', async (req, res) => {
-  try{
-    const { id } = req.params;
-    await prisma.event.delete({ where: { id } });
-    res.json({ ok:true });
-  }catch(e){ console.error(e); res.status(500).json({ message:'Server error' }); }
-});
-
 // Aggregate volunteers across events
 app.get('/api/volunteers', async (req, res) => {
   try{
@@ -691,21 +697,42 @@ app.post('/api/auth/switch-role', async (req, res) => {
     const ok = await bcrypt.compare(String(password), current.passwordHash);
     if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
 
-    const existingTarget = await prisma.user.findUnique({ where: { email_role: { email, role: toRole } } });
-    if (existingTarget) return res.json({ user: existingTarget, token: 'mock-token' });
+    let targetUser = await prisma.user.findUnique({ where: { email_role: { email, role: toRole } } });
+    let statusCode = 200;
 
-    const created = await prisma.user.create({
+    if (!targetUser) {
+      targetUser = await prisma.user.create({
+        data: {
+          role: toRole,
+          email,
+          name: name || current.name,
+          address: address || current.address,
+          passwordHash: current.passwordHash,
+          isActive: true,
+          lastLogin: new Date()
+        },
+      });
+      statusCode = 201;
+    }
+
+    const token = generateToken(targetUser.id, targetUser.email, targetUser.role);
+    const refreshToken = generateRefreshToken(targetUser.id);
+
+    await prisma.session.create({
       data: {
-        role: toRole,
-        email,
-        name: name || current.name,
-        address: address || current.address,
-        passwordHash: current.passwordHash,
-      },
+        userId: targetUser.id,
+        token,
+        refreshToken,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        ipAddress: req.ip || req.connection?.remoteAddress,
+        userAgent: req.headers['user-agent'] || 'Unknown'
+      }
     });
-    return res.status(201).json({ user: created, token: 'mock-token' });
+
+    const { passwordHash: _, ...safeUser } = targetUser;
+    return res.status(statusCode).json({ user: safeUser, token, refreshToken });
   } catch (e) {
-    console.error(e);
+    console.error('Switch role error:', e);
     return res.status(500).json({ message: 'Server error' });
   }
 });

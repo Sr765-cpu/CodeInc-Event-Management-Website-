@@ -453,16 +453,25 @@
         const loginText = document.getElementById('login-text');
         if (!loginLink) return;
 
-        const user = window.Clerk && window.Clerk.user;
+        const clerkUser = window.Clerk && window.Clerk.user;
+        let localUser = null;
+        try {
+          const userStr = localStorage.getItem('user');
+          if (userStr) localUser = JSON.parse(userStr);
+        } catch(e) {}
+        const localToken = localStorage.getItem('token');
+        const isAuthenticated = !!(clerkUser || (localToken && localUser));
 
         // Reset any previous click handler
         loginLink.onclick = null;
 
-        if (user) {
-          // Signed in: show Logout and sign out via Clerk
+        if (isAuthenticated) {
+          // Signed in: show Logout and sign out via Clerk or localStorage
           loginLink.href = '#';
-          if (loginText) loginText.textContent = 'Logout';
-          else loginLink.textContent = 'Logout';
+          const displayName = (clerkUser && (clerkUser.firstName || clerkUser.fullName)) || (localUser && localUser.name) || '';
+          const label = displayName ? `Logout (${displayName})` : 'Logout';
+          if (loginText) loginText.textContent = label;
+          else loginLink.textContent = label;
 
           loginLink.onclick = async (event) => {
             event.preventDefault();
@@ -474,6 +483,9 @@
             } catch (err) {
               console.error('Failed to sign out via Clerk on events page:', err);
             } finally {
+              localStorage.removeItem('token');
+              localStorage.removeItem('refreshToken');
+              localStorage.removeItem('user');
               window.location.href = 'index.html';
             }
           };
