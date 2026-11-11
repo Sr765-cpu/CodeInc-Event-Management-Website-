@@ -172,6 +172,8 @@
     const typingIndicatorEl = $('chat-typing');
     const emojiBtn = $('chat-emoji-btn');
     const emojiPopover = $('chat-emoji-popover');
+    const attachBtn = $('chat-attach-btn');
+    const fileInput = $('chat-file-input');
     const clearBtn = $('chat-clear-btn');
     const editProfileBtn = $('chat-edit-profile-btn');
     const profileModal = $('chat-profile-modal');
@@ -513,12 +515,12 @@
 
       if (activeRoomType === 'room') {
         headerAvatarEl.textContent = '#';
-        headerTitleEl.textContent = 'General';
-        headerSubtitleEl.textContent = 'Public group discussion';
+        headerTitleEl.innerHTML = 'General <span class="chat-ai-pill">AI Active</span>';
+        headerSubtitleEl.textContent = 'Group discussion • EventNest AI responds 24/7';
       } else if (activeRoomType === 'ai') {
         headerAvatarEl.textContent = '🤖';
-        headerTitleEl.innerHTML = 'EventNest AI <span class="chat-ai-pill">24/7 AI</span>';
-        headerSubtitleEl.textContent = 'Live events, ticket pricing, volunteer guides & planning';
+        headerTitleEl.innerHTML = 'EventNest AI <span class="chat-ai-pill">Private AI</span>';
+        headerSubtitleEl.textContent = 'Private 1-on-1 concierge for events, tickets & planning';
       } else if (activeRoomType === 'dm' && activePartner) {
         const initials = getInitials(activePartner.name || '') || 'U';
         headerAvatarEl.textContent = initials;
@@ -815,12 +817,7 @@
           const prompt = chip.dataset.prompt || chip.textContent;
           if (!prompt) return;
 
-          let textToSend = prompt;
-          if (activeRoomType === 'room') {
-            textToSend = `@ai ${prompt}`;
-          }
-
-          input.value = textToSend;
+          input.value = prompt;
           input.focus();
           updateInputRowState();
 
@@ -864,6 +861,36 @@
           emojiPopover.style.display = 'none';
           emojiBtn.setAttribute('aria-expanded', 'false');
         }
+      });
+    }
+
+    // Hook up File Attachment
+    if (attachBtn && fileInput) {
+      attachBtn.addEventListener('click', () => {
+        fileInput.click();
+      });
+
+      fileInput.addEventListener('change', () => {
+        const file = fileInput.files && fileInput.files[0];
+        if (!file) return;
+
+        if (file.size > 5 * 1024 * 1024) {
+          setStatus('File too large (max 5MB).', 'error');
+          fileInput.value = '';
+          return;
+        }
+
+        const sizeKb = Math.round(file.size / 1024);
+        const tag = `📎 [Attachment: ${file.name} (${sizeKb} KB)]`;
+        if (input) {
+          const existing = (input.value || '').trim();
+          input.value = existing ? `${existing} ${tag}` : tag;
+          input.focus();
+          updateInputRowState();
+        }
+        setStatus(`Attached ${file.name}`, 'info');
+        setTimeout(() => setStatus('', ''), 2500);
+        fileInput.value = '';
       });
     }
 

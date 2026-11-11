@@ -172,9 +172,30 @@ function generateLocalAIResponse(prompt, context, user) {
   const p = (prompt || '').toLowerCase().trim();
   const userName = user?.name ? user.name.split(' ')[0] : 'friend';
 
-  // 1. Greetings & Help
+  // 1. Doubt & Question Clarification
   if (
-    /^(hi|hello|hey|greetings|hola|namaste|yo|start|help|who are you|what can you do)/i.test(p) ||
+    p.includes('doubt') ||
+    p.includes('question') ||
+    p.includes('clear') ||
+    p.includes('clarif') ||
+    p.includes('problem') ||
+    p.includes('confused') ||
+    p.includes('query')
+  ) {
+    return `👋 **Hello ${userName}! I'm right here to help clear your doubt.**
+
+Please tell me what you need assistance with:
+• 📅 **Events**: Details on upcoming hackathons, summits, dates, or venues.
+• 🎟️ **Tickets & Pricing**: How to register, pass types (General, Early Bird, VIP), or prices.
+• 🙋 **Volunteering**: Available roles, responsibilities, or how to submit your volunteer application.
+• 📋 **Organizing & Templates**: How to create event templates, manage RSVPs, or check stats on the Dashboard.
+
+Feel free to describe your doubt, and I'll clear it for you right away!`;
+  }
+
+  // 2. Greetings & Help
+  if (
+    /^(hi|hello|hey|hy|hii|heyy|greetings|hola|namaste|yo|start|help|who are you|what can you do)/i.test(p) ||
     p === '?' ||
     p === 'menu'
   ) {
@@ -428,28 +449,36 @@ export async function generateAIResponse(prompt, { prisma, user }) {
  * Asynchronously processes an incoming user message and responds if AI is triggered.
  */
 export async function handleIncomingAIMessage({ prisma, io, user, room, content }) {
-  const isDedicatedAiRoom = room === 'ai-assistant' || room.startsWith('ai:');
+  // Prevent AI from responding to its own messages
+  if (user && (user.email === 'ai@eventnest.internal' || user.name === 'EventNest AI')) {
+    return false;
+  }
+
+  const roomName = (room || 'general').toString();
+  const isDedicatedAiRoom = roomName === 'ai-assistant' || roomName.startsWith('ai:');
+  const isGeneralRoom = roomName === 'general';
   const hasAiMention = /(@ai\b|@bot\b|^ai[:, ]|\/ai\b)/i.test(content);
 
-  if (!isDedicatedAiRoom && !hasAiMention) {
+  // In dedicated AI rooms, in General room, or if mentioned in any room (e.g. DM), AI responds!
+  if (!isDedicatedAiRoom && !isGeneralRoom && !hasAiMention) {
     return false;
   }
 
   // Emit typing indicator to room
   if (io) {
     try {
-      io.to(room).emit('chat:typing', {
+      io.to(roomName).emit('chat:typing', {
         user: 'EventNest AI',
         isTyping: true,
-        room,
+        room: roomName,
       });
     } catch (e) {
       console.error('Error emitting chat:typing:', e);
     }
   }
 
-  // Slight natural processing delay (600ms)
-  await new Promise((resolve) => setTimeout(resolve, 600));
+  // Slight natural processing delay (400ms)
+  await new Promise((resolve) => setTimeout(resolve, 400));
 
   try {
     const aiUser = await getOrCreateAIUser(prisma);
@@ -458,7 +487,7 @@ export async function handleIncomingAIMessage({ prisma, io, user, room, content 
     const aiMessage = await prisma.chatMessage.create({
       data: {
         senderId: aiUser.id,
-        room,
+        room: roomName,
         content: replyText,
       },
       include: {
@@ -473,15 +502,15 @@ export async function handleIncomingAIMessage({ prisma, io, user, room, content 
       },
     });
 
-    // Clear typing indicator
+    // Clear typing indicator and broadcast message
     if (io) {
       try {
-        io.to(room).emit('chat:typing', {
+        io.to(roomName).emit('chat:typing', {
           user: 'EventNest AI',
           isTyping: false,
-          room,
+          room: roomName,
         });
-        io.to(room).emit('chat:message', aiMessage);
+        io.to(roomName).emit('chat:message', aiMessage);
       } catch (e) {
         console.error('Error broadcasting AI chat:message:', e);
       }
@@ -492,10 +521,10 @@ export async function handleIncomingAIMessage({ prisma, io, user, room, content 
     console.error('Error in handleIncomingAIMessage:', err);
     if (io) {
       try {
-        io.to(room).emit('chat:typing', {
+        io.to(roomName).emit('chat:typing', {
           user: 'EventNest AI',
           isTyping: false,
-          room,
+          room: roomName,
         });
       } catch (_) {}
     }

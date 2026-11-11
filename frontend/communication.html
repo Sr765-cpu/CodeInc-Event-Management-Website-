@@ -97,7 +97,7 @@
                         <div class="chat-conversation-avatar chat-conversation-room">#</div>
                         <div class="chat-conversation-text">
                           <div class="chat-conversation-name">General</div>
-                          <div class="chat-conversation-subtitle">Public group discussion</div>
+                          <div class="chat-conversation-subtitle">Group chat with EventNest AI</div>
                         </div>
                       </li>
                       <li class="chat-conversation-item" data-room-id="ai-assistant" id="chat-room-ai">
@@ -105,9 +105,9 @@
                         <div class="chat-conversation-text">
                           <div class="chat-conversation-name">
                             EventNest AI
-                            <span class="chat-ai-pill">24/7 AI</span>
+                            <span class="chat-ai-pill">Private AI</span>
                           </div>
-                          <div class="chat-conversation-subtitle">Events, tickets & planning concierge</div>
+                          <div class="chat-conversation-subtitle">1-on-1 AI Assistant & Planner</div>
                         </div>
                       </li>
                     </ul>
@@ -192,7 +192,8 @@
                         </div>
                       </div>
                       <button type="button" class="chat-input-icon" id="chat-attach-btn" aria-label="Attach file">📎</button>
-                      <textarea id="chat-input" name="message" rows="1" placeholder="Type a message or ask @ai..."></textarea>
+                      <input type="file" id="chat-file-input" style="display: none;" accept="image/*,.pdf,.doc,.docx,.txt" />
+                      <textarea id="chat-input" name="message" rows="1" placeholder="Ask EventNest AI anything (events, tickets, volunteering, planning)..."></textarea>
                       <button class="chat-send-btn" type="submit" aria-label="Send message">
                         <span class="chat-send-icon">➤</span>
                       </button>
