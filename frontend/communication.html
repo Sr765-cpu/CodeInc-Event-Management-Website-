@@ -91,13 +91,23 @@
                   </div>
 
                   <div class="chat-sidebar-section">
-                    <div class="chat-sidebar-title">Rooms</div>
+                    <div class="chat-sidebar-title">Channels & AI</div>
                     <ul id="chat-rooms-list" class="chat-sidebar-list">
                       <li class="chat-conversation-item chat-conversation-active" data-room-id="general" id="chat-room-general">
                         <div class="chat-conversation-avatar chat-conversation-room">#</div>
                         <div class="chat-conversation-text">
                           <div class="chat-conversation-name">General</div>
-                          <div class="chat-conversation-subtitle">Group chat for everyone</div>
+                          <div class="chat-conversation-subtitle">Public group discussion</div>
+                        </div>
+                      </li>
+                      <li class="chat-conversation-item" data-room-id="ai-assistant" id="chat-room-ai">
+                        <div class="chat-conversation-avatar chat-conversation-ai">🤖</div>
+                        <div class="chat-conversation-text">
+                          <div class="chat-conversation-name">
+                            EventNest AI
+                            <span class="chat-ai-pill">24/7 AI</span>
+                          </div>
+                          <div class="chat-conversation-subtitle">Events, tickets & planning concierge</div>
                         </div>
                       </li>
                     </ul>
@@ -130,11 +140,59 @@
 
                   <div id="chat-messages" class="chat-messages"></div>
 
+                  <!-- Quick prompts container -->
+                  <div id="chat-quick-prompts" class="chat-quick-prompts" aria-label="Quick AI suggestions">
+                    <button type="button" class="chat-chip" data-prompt="What events are coming up?">📅 Upcoming Events</button>
+                    <button type="button" class="chat-chip" data-prompt="What are the ticket prices?">🎟️ Ticket Prices</button>
+                    <button type="button" class="chat-chip" data-prompt="How do I volunteer?">🙋 Volunteer Roles</button>
+                    <button type="button" class="chat-chip" data-prompt="Give me an event planning checklist">💡 Event Checklist</button>
+                    <button type="button" class="chat-chip" data-prompt="Show events in Pune">📍 Events in Pune</button>
+                  </div>
+
+                  <!-- Typing indicator -->
+                  <div id="chat-typing" class="chat-typing-indicator" style="display: none;">
+                    <div class="typing-avatar">🤖</div>
+                    <div class="typing-bubble">
+                      <span class="typing-label">EventNest AI is thinking</span>
+                      <span class="typing-dots">
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                      </span>
+                    </div>
+                  </div>
+
                   <form id="chat-form" class="chat-form" novalidate>
                     <div class="chat-input-row">
-                      <button type="button" class="chat-input-icon" id="chat-emoji-btn" aria-label="Insert emoji">😊</button>
+                      <div class="chat-emoji-container">
+                        <button type="button" class="chat-input-icon" id="chat-emoji-btn" aria-label="Insert emoji" aria-expanded="false" aria-haspopup="true">😊</button>
+                        <div id="chat-emoji-popover" class="chat-emoji-popover" style="display: none;">
+                          <div class="chat-emoji-grid">
+                            <button type="button" class="chat-emoji-item" data-emoji="🎉">🎉</button>
+                            <button type="button" class="chat-emoji-item" data-emoji="📅">📅</button>
+                            <button type="button" class="chat-emoji-item" data-emoji="🎟️">🎟️</button>
+                            <button type="button" class="chat-emoji-item" data-emoji="🚀">🚀</button>
+                            <button type="button" class="chat-emoji-item" data-emoji="💡">💡</button>
+                            <button type="button" class="chat-emoji-item" data-emoji="👍">👍</button>
+                            <button type="button" class="chat-emoji-item" data-emoji="❤️">❤️</button>
+                            <button type="button" class="chat-emoji-item" data-emoji="👏">👏</button>
+                            <button type="button" class="chat-emoji-item" data-emoji="🥳">🥳</button>
+                            <button type="button" class="chat-emoji-item" data-emoji="🔥">🔥</button>
+                            <button type="button" class="chat-emoji-item" data-emoji="📍">📍</button>
+                            <button type="button" class="chat-emoji-item" data-emoji="🤝">🤝</button>
+                            <button type="button" class="chat-emoji-item" data-emoji="✨">✨</button>
+                            <button type="button" class="chat-emoji-item" data-emoji="👋">👋</button>
+                            <button type="button" class="chat-emoji-item" data-emoji="🌟">🌟</button>
+                            <button type="button" class="chat-emoji-item" data-emoji="🎯">🎯</button>
+                            <button type="button" class="chat-emoji-item" data-emoji="📋">📋</button>
+                            <button type="button" class="chat-emoji-item" data-emoji="🏆">🏆</button>
+                            <button type="button" class="chat-emoji-item" data-emoji="💯">💯</button>
+                            <button type="button" class="chat-emoji-item" data-emoji="🙌">🙌</button>
+                          </div>
+                        </div>
+                      </div>
                       <button type="button" class="chat-input-icon" id="chat-attach-btn" aria-label="Attach file">📎</button>
-                      <textarea id="chat-input" name="message" rows="1" placeholder="Type a message..."></textarea>
+                      <textarea id="chat-input" name="message" rows="1" placeholder="Type a message or ask @ai..."></textarea>
                       <button class="chat-send-btn" type="submit" aria-label="Send message">
                         <span class="chat-send-icon">➤</span>
                       </button>

@@ -2,13 +2,14 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticate, optionalAuth } from '../middleware/auth.js';
 import { getIO } from '../socket.js';
+import { handleIncomingAIMessage } from '../utils/ai.js';
 
 const prisma = new PrismaClient();
 const router = express.Router();
 
 // Get messages for a room
-// - Public read for non-DM rooms (e.g. "general")
-// - Authenticated and authorized only for direct-message rooms (dm:userA:userB)
+// - Public read for non-DM, non-private-AI rooms (e.g. "general", "ai-assistant")
+// - Authenticated and authorized for direct-message rooms (dm:userA:userB) and private AI rooms (ai:userId)
 router.get('/messages', optionalAuth, async (req, res) => {
   try {
     const roomRaw = req.query.room || 'general';
@@ -33,6 +34,16 @@ router.get('/messages', optionalAuth, async (req, res) => {
       const viewerId = req.user.id;
 
       if (viewerId !== userA && viewerId !== userB) {
+        return res.status(403).json({ message: 'Not allowed to access this conversation' });
+      }
+    }
+
+    if (room.startsWith('ai:')) {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required for AI assistant' });
+      }
+      const targetUserId = room.replace('ai:', '');
+      if (req.user.id !== targetUserId && req.user.role !== 'admin') {
         return res.status(403).json({ message: 'Not allowed to access this conversation' });
       }
     }
@@ -94,6 +105,13 @@ router.post('/messages', authenticate, async (req, res) => {
       }
     }
 
+    if (roomName.startsWith('ai:')) {
+      const targetUserId = roomName.replace('ai:', '');
+      if (req.user.id !== targetUserId && req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Not allowed to send messages to this AI conversation' });
+      }
+    }
+
     const created = await prisma.chatMessage.create({
       data: {
         senderId: req.user.id,
@@ -113,14 +131,25 @@ router.post('/messages', authenticate, async (req, res) => {
     });
 
     // Broadcast to room via Socket.IO if available
+    const io = getIO();
     try {
-      const io = getIO();
       if (io) {
         io.to(roomName).emit('chat:message', created);
       }
     } catch (err) {
       console.error('Socket broadcast error (message):', err);
     }
+
+    // Trigger AI response asynchronously if in AI room or mentions AI
+    handleIncomingAIMessage({
+      prisma,
+      io,
+      user: req.user,
+      room: roomName,
+      content: trimmed,
+    }).catch((err) => {
+      console.error('Error handling AI response:', err);
+    });
 
     res.status(201).json({ message: created });
   } catch (error) {
@@ -133,7 +162,10 @@ router.post('/messages', authenticate, async (req, res) => {
 router.get('/users', authenticate, async (req, res) => {
   try {
     const users = await prisma.user.findMany({
-      where: { isActive: true },
+      where: {
+        isActive: true,
+        email: { not: 'ai@eventnest.internal' },
+      },
       select: {
         id: true,
         name: true,
@@ -173,6 +205,13 @@ router.delete('/messages', authenticate, async (req, res) => {
       const actorId = req.user.id;
 
       if (actorId !== userA && actorId !== userB) {
+        return res.status(403).json({ message: 'Not allowed to clear this conversation' });
+      }
+    }
+
+    if (room.startsWith('ai:')) {
+      const targetUserId = room.replace('ai:', '');
+      if (req.user.id !== targetUserId && req.user.role !== 'admin') {
         return res.status(403).json({ message: 'Not allowed to clear this conversation' });
       }
     }

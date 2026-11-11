@@ -22,16 +22,52 @@
     el.dataset.type = type || '';
   }
 
-  function renderMessages(list, currentUserId) {
+  function formatContent(text) {
+    if (!text) return '';
+    let safe = String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+
+    // Code blocks
+    safe = safe.replace(/```([\s\S]*?)```/g, '<pre class="chat-pre"><code>$1</code></pre>');
+    // Inline code
+    safe = safe.replace(/`([^`]+)`/g, '<code class="chat-code">$1</code>');
+    // Bold: **text**
+    safe = safe.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    // Italic: *text*
+    safe = safe.replace(/(^|[^*])\*(?!\*)(.*?)\*(?!\*)/g, '$1<em>$2</em>');
+    // Links: [text](url)
+    safe = safe.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="chat-link" target="_blank" rel="noopener noreferrer">$1</a>');
+    // Bullet lists
+    safe = safe.replace(/(^|\n)[•\-\*]\s+(.+)/g, '$1<div class="chat-bullet"><span class="chat-bullet-dot">•</span><span class="chat-bullet-text">$2</span></div>');
+    // Newlines
+    safe = safe.replace(/\n/g, '<br>');
+    return safe;
+  }
+
+  function renderMessages(list, currentUserId, activeRoomType) {
     const container = $('chat-messages');
     if (!container) return;
 
     container.innerHTML = '';
 
     if (!Array.isArray(list) || list.length === 0) {
-      const empty = document.createElement('p');
+      const empty = document.createElement('div');
       empty.className = 'chat-empty';
-      empty.textContent = 'No messages yet. Start the conversation!';
+      if (activeRoomType === 'ai') {
+        empty.innerHTML = `
+          <div class="chat-ai-welcome-box">
+            <div class="chat-ai-welcome-icon">🤖</div>
+            <div class="chat-ai-welcome-title">EventNest AI Concierge</div>
+            <div class="chat-ai-welcome-desc">Hello! I'm connected live to your MongoDB events, tickets, and volunteer database. Ask me anything or tap one of the quick suggestions below.</div>
+          </div>
+        `;
+      } else {
+        empty.textContent = 'No messages yet. Start the conversation!';
+      }
       container.appendChild(empty);
       return;
     }
@@ -39,18 +75,31 @@
     list.forEach((item) => {
       const msgEl = document.createElement('div');
       const isSelf = currentUserId && item.sender && item.sender.id === currentUserId;
-      msgEl.className = 'chat-message' + (isSelf ? ' chat-message-self' : '');
+      const isAI = item.sender && (
+        item.sender.email === 'ai@eventnest.internal' ||
+        item.sender.name === 'EventNest AI' ||
+        item.sender.role === 'ai'
+      );
+
+      let classes = 'chat-message';
+      if (isSelf) classes += ' chat-message-self';
+      if (isAI) classes += ' chat-message-ai';
+      msgEl.className = classes;
 
       const author = document.createElement('div');
       author.className = 'chat-message-author';
-      const name = item.sender && item.sender.name
-        ? item.sender.name
-        : 'User';
-      author.textContent = isSelf ? 'You' : name;
+      if (isAI) {
+        author.innerHTML = '<span class="chat-ai-author-icon">🤖</span> EventNest AI <span class="chat-ai-badge">AI Assistant</span>';
+      } else {
+        const name = item.sender && item.sender.name
+          ? item.sender.name
+          : 'User';
+        author.textContent = isSelf ? 'You' : name;
+      }
 
       const body = document.createElement('div');
       body.className = 'chat-message-body';
-      body.textContent = item.content || '';
+      body.innerHTML = formatContent(item.content || '');
 
       const meta = document.createElement('div');
       meta.className = 'chat-message-meta';
@@ -118,6 +167,11 @@
     const currentEmailEl = $('chat-current-email');
     const dmListEl = $('chat-dm-list');
     const generalRoomLi = $('chat-room-general');
+    const aiRoomLi = $('chat-room-ai');
+    const quickPromptsContainer = $('chat-quick-prompts');
+    const typingIndicatorEl = $('chat-typing');
+    const emojiBtn = $('chat-emoji-btn');
+    const emojiPopover = $('chat-emoji-popover');
     const clearBtn = $('chat-clear-btn');
     const editProfileBtn = $('chat-edit-profile-btn');
     const profileModal = $('chat-profile-modal');
@@ -460,7 +514,11 @@
       if (activeRoomType === 'room') {
         headerAvatarEl.textContent = '#';
         headerTitleEl.textContent = 'General';
-        headerSubtitleEl.textContent = 'Group chat for everyone';
+        headerSubtitleEl.textContent = 'Public group discussion';
+      } else if (activeRoomType === 'ai') {
+        headerAvatarEl.textContent = '🤖';
+        headerTitleEl.innerHTML = 'EventNest AI <span class="chat-ai-pill">24/7 AI</span>';
+        headerSubtitleEl.textContent = 'Live events, ticket pricing, volunteer guides & planning';
       } else if (activeRoomType === 'dm' && activePartner) {
         const initials = getInitials(activePartner.name || '') || 'U';
         headerAvatarEl.textContent = initials;
@@ -481,6 +539,10 @@
       if (activeRoomType === 'room') {
         if (generalRoomLi) {
           generalRoomLi.classList.add('chat-conversation-active');
+        }
+      } else if (activeRoomType === 'ai') {
+        if (aiRoomLi) {
+          aiRoomLi.classList.add('chat-conversation-active');
         }
       } else if (activeRoomType === 'dm' && activePartner && dmListEl) {
         const selector = `[data-dm-user-id="${activePartner.id}"]`;
@@ -509,8 +571,9 @@
 
         let res;
         const isDmRoom = roomId.startsWith('dm:');
+        const isAiPrivateRoom = roomId.startsWith('ai:');
 
-        if (isDmRoom) {
+        if (isDmRoom || isAiPrivateRoom) {
           if (!hasAuthService) {
             if (showErrors) {
               setStatus('Login required to view this conversation.', 'error');
@@ -560,7 +623,7 @@
           container.dataset.snapshot = JSON.stringify(msgs);
         }
 
-        renderMessages(data.messages || [], currentUserId);
+        renderMessages(data.messages || [], currentUserId, activeRoomType);
       } catch (err) {
         console.error('Load chat messages error:', err);
         if (showErrors) {
@@ -728,6 +791,79 @@
         setActiveConversationInSidebar();
         joinActiveRoomOnSocket();
         await loadMessages(true);
+      });
+    }
+
+    // Hook up EventNest AI Assistant room click
+    if (aiRoomLi) {
+      aiRoomLi.addEventListener('click', async () => {
+        activeRoomType = 'ai';
+        activePartner = null;
+        activeRoomId = currentUserId ? `ai:${currentUserId}` : 'ai-assistant';
+        updateHeader();
+        setActiveConversationInSidebar();
+        joinActiveRoomOnSocket();
+        await loadMessages(true);
+      });
+    }
+
+    // Hook up Quick Prompts
+    if (quickPromptsContainer) {
+      const chips = quickPromptsContainer.querySelectorAll('.chat-chip');
+      chips.forEach((chip) => {
+        chip.addEventListener('click', () => {
+          const prompt = chip.dataset.prompt || chip.textContent;
+          if (!prompt) return;
+
+          let textToSend = prompt;
+          if (activeRoomType === 'room') {
+            textToSend = `@ai ${prompt}`;
+          }
+
+          input.value = textToSend;
+          input.focus();
+          updateInputRowState();
+
+          if (isAuthenticated && typeof form.requestSubmit === 'function') {
+            form.requestSubmit();
+          }
+        });
+      });
+    }
+
+    // Hook up Emoji picker
+    if (emojiBtn && emojiPopover) {
+      emojiBtn.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const isHidden = emojiPopover.style.display === 'none' || !emojiPopover.style.display;
+        emojiPopover.style.display = isHidden ? 'block' : 'none';
+        emojiBtn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+      });
+
+      const emojiItems = emojiPopover.querySelectorAll('.chat-emoji-item');
+      emojiItems.forEach((btn) => {
+        btn.addEventListener('click', (event) => {
+          event.stopPropagation();
+          const emoji = btn.dataset.emoji || btn.textContent;
+          if (emoji && input) {
+            const start = input.selectionStart || input.value.length;
+            const end = input.selectionEnd || input.value.length;
+            const val = input.value;
+            input.value = val.substring(0, start) + emoji + val.substring(end);
+            input.selectionStart = input.selectionEnd = start + emoji.length;
+            input.focus();
+            updateInputRowState();
+          }
+          emojiPopover.style.display = 'none';
+          emojiBtn.setAttribute('aria-expanded', 'false');
+        });
+      });
+
+      window.addEventListener('click', (event) => {
+        if (!emojiPopover.contains(event.target) && event.target !== emojiBtn) {
+          emojiPopover.style.display = 'none';
+          emojiBtn.setAttribute('aria-expanded', 'false');
+        }
       });
     }
 
@@ -1008,6 +1144,10 @@
           // Only render messages for the room currently open
           if (!payload || !payload.room || payload.room !== activeRoomId) return;
 
+          if (typingIndicatorEl) {
+            typingIndicatorEl.style.display = 'none';
+          }
+
           const container = $('chat-messages');
           if (!container) return;
 
@@ -1017,7 +1157,19 @@
             : [];
           list.push(payload);
           container.dataset.snapshot = JSON.stringify(list);
-          renderMessages(list, currentUserId);
+          renderMessages(list, currentUserId, activeRoomType);
+        });
+
+        socket.on('chat:typing', (payload) => {
+          if (!payload || !payload.room || payload.room !== activeRoomId) return;
+          if (!typingIndicatorEl) return;
+          if (payload.isTyping) {
+            typingIndicatorEl.style.display = 'flex';
+            const container = $('chat-messages');
+            if (container) container.scrollTop = container.scrollHeight;
+          } else {
+            typingIndicatorEl.style.display = 'none';
+          }
         });
 
         socket.on('chat:cleared', (info) => {
@@ -1122,6 +1274,14 @@
         input.readOnly = true;
         setStatus('Sending...', 'info');
         const room = activeRoomId || 'general';
+
+        const isAiTriggered = activeRoomType === 'ai' || /(@ai\b|@bot\b|^ai[:, ]|\/ai\b)/i.test(text);
+        if (isAiTriggered && typingIndicatorEl) {
+          typingIndicatorEl.style.display = 'flex';
+          const container = $('chat-messages');
+          if (container) container.scrollTop = container.scrollHeight;
+        }
+
         const res = await AuthService.authenticatedFetch(`${API_BASE}/chat/messages`, {
           method: 'POST',
           body: JSON.stringify({ content: text, room }),
